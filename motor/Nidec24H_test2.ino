@@ -1,17 +1,17 @@
-# define breakPin 8  // Connect the yellow break line to pin 8
-# define motorPin 9  // Connect the green PWM line to pin 9
-// # define directionPin 7 // Connect the blue direction line to pin 7
+# define breakPin 8  // Yellow break line to pin 8
+# define motorPin 9  // Green PWM line to pin 9
+// # define directionPin 7 // Blue direction line to pin 7
 
 void setup() {
-  pinMode(breakPin, OUTPUT);
+  pinMode(breakPin, OUTPUT);  // Set pins as outputs
   pinMode(motorPin, OUTPUT);
 
   digitalWrite(breakPin, HIGH);  // Set the brakePin to HIGH(Release)
 
-  // Configure Timer 1 for 20kHz PWM
-  TCCR1A = bit(COM1A1) | bit(WGM11);  // Clear OC1A on compare match, set at TOP    Timing System - Fast PWM mode
-  TCCR1B = bit(WGM13) | bit(WGM12) | bit(CS10);  // Fast PWM, no prescaler
-  ICR1 = 799;  // TOP value for 20kHz PWM    PWM_frequency = clock_speed / [Prescaler_value * (1 + TOP_Value)]
+  // Setup Timer 1 for 20kHz PWM
+  TCCR1A = bit(COM1A1) | bit(WGM11);  // Non-inverting PWM,   mode 14: fast PWM using ICR1 as TOP
+  TCCR1B = bit(WGM13) | bit(WGM12) | bit(CS10);  // No prescaling
+  ICR1 = 799;  // TOP value for 20kHz PWM,   PWM_frequency = clock_speed / [Prescaler_value * (1 + TOP_value)]
 
   Serial.begin(9600);
 }
@@ -20,9 +20,9 @@ void loop() {
   if (Serial.available() > 0) {
     int dutyCycle = Serial.parseInt();
 
-    dutyCycle = constrain(dutyCycle, 0, 799); // duty cycle value range
+    dutyCycle = constrain(dutyCycle, 0, 799); // Limit duty cycle value range
 
-    OCR1A = dutyCycle; // Set the duty cycle to write OCR1A
+    OCR1A = dutyCycle; // Set dutyCycle to write OCR1A
 
     Serial.print("Duty Cycle set to: ");
     Serial.println(dutyCycle);
