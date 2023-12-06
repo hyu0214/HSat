@@ -7,7 +7,6 @@
 MPU6050 mpu (Wire);//attach MPU6050 library to Wire.h
 
 #define MPU6050     0x68// MPU6050 address
-#define GyZ         0x47// MPU6050 Gyro Z address
 #define BT_RX       8//HM-10 TX pin num
 #define BT_TX       9//HM-10 RX pin num
 #define DIRECTION1//Motor Rotation Direction
@@ -24,6 +23,7 @@ float accelSpeed;
 float speed;
 float set_speed;
 float set_angle;
+float cumulated_error;
 int pwm;
 const float Kp;//P controller Gain
 const float Ki;//I controller Gain
@@ -31,49 +31,31 @@ const float alpha;//complementary filter gain
 unsigned long T_interval;
 unsigned long now;
 const float error_ref;//integrator shut off reference value
+int settling_counter;//counter for selective PI control system
+bool sun_flag;//bool flag for whether system is oriented to the sun
 
 SoftwareSerial BTSerial(BT_RX, BT_TX);//BTSerial: HM10 comm
-
-void get_angle(){//function to obtain angle from MPU6050
-  mpu.Execute();
-
-}
-int PIcontrol(float setpoint, float currentvalue){
-  float error = setpoint - currentvalue;
-  float r_speed = abs(mpu.GetAngGyroZ())*3.14159/180;
-  if(error < err_ref){
-    cummulated_error += error * T_interval;
-  }
-  else{
-    cummulated_error = 0;
-  }
-  pwm = Kp * error + Ki * cummulated_error;//PIcontrol feedback value
-  pwm = constrain(pwm, -255, 255);//constrained feedback value(-255,255)
-  return pwm;
-}
-
-void Motor_control(int pwm) {
-  if (pwm <= 0) {
-    digitalWrite(DIRECTION, LOW);
-    pwm = -pwm;
-  } else {
-    digitalWrite(DIRECTION, HIGH);
-  }
-  //write absolute value of PWM into PWM pin
-}
 
 void setup() {
   // put your setup code here, to run once:
   //set register
   //set pin mode
 
+  //initiating Bluetooth Comm
+  BTSerial.begin(38400);//Bluetooth HM10 Baudrate: 38400
+  //initializing MPU6050
+  mpu.Initialize();
+  BTSerial.println("Sensor Calibration in Process: DO NOT MOVE")
+  mpu.Calibrate ();//calibrating MPU6050 for sensor offset value
+  BTSerial.println("Calibration COMPLETE: H_SAT Operational")
+
   //initializing values
-  angle = 0;
+  set_angle=0;
   accelSpeed = 0;
-  cummulated_error = 0;
+  cumulated_error = 0;
   rpm = 0;//default set RPM =0
   op_mode = 0;//defualt set op_mode: Stabilization
-  BTSerial.begin(38400);//Bluetooth HM10 Baudrate: 38400
+  T_interval = 0;
 }
 
 void loop() {
@@ -85,20 +67,20 @@ void loop() {
       op_mode=0;
       BTSerial.println("Stabilize");
     }
-    else if(command == 25000){//mode1: constant RPM rotation
+    else if(command == 25000){//mode1: moving to set_angle
       op_mode=1;
-      set_speed = 30;//default speed 60rpm
-      BTSerial.println("Constant RPM:30");
+      BTSerial.print("Rotating to orientation:");
+      BTSerial.println(set_angle);
     }
     else if(command == 30000){//mode2: solar tracking
       op_mode=2;
       BTSerial.println("Tracking Sun")
     }
-    else{
+    else if(abs(command)<180){
       op_mode = 1;
-      rpm = constrain(command,-120,120);//limit RPM to maximum 120 RPM
-      BTSerial.print("Constant RPM:");
-      BTSerial.print(rpm);
+      set_angle = constrain(command,-180.0,180.0);//get set angle
+      BTSerial.print("Rotating to orientation:");
+      BTSerial.println(set_angle);
     }
   }
 
@@ -106,7 +88,7 @@ void loop() {
     Stabilization();
   }
   else if(op_mode == 1){
-    constantRPM(rpm);
+    orientation();
   }
   else if(op_mode == 2){
     while(){
@@ -117,17 +99,50 @@ void loop() {
 
 void Stabilization(){//stabilization mode function
   set_speed = 0;
-  get_angle();
-  
-  Motor_control(PIcontrol(set_speed, angle));
+  Update_MPU();
+  float speed = getGyroZ();
+  Motor_control(PIcontrol(set_speed, speed));
 }
 
-void constantRPM(int rpm){//constant RPM mode function
-  set_speed = (rpm)*6;//convert RPM into deg/sec
-  get_angle();
-  Motor_control(PIcontrol(set_speed, angle));
+void orientation(){//constant RPM mode function
+  Update_MPU();
+  float angle = getAngZ();
+  Motor_control(PIcontrol(set_angle, angle));
 }
 
 void SolarTrack(){//solar tracking mode function
-  get_angle();
+  Update_MPU();
+}
+
+void Update_MPU(){//function to update speed and angle from MPU6050
+  mpu.Execute();
+}
+
+int PIcontrol(float setpoint, float currentvalue){
+  now = micros();
+  float error = setpoint - currentvalue;
+  float r_speed = abs(mpu.GetAngGyroZ())*3.14159/180;
+
+  if(abs(error)<err_ref) counter ++;
+  else counter = 0;
+
+  if(counter>5){//start Integrator if entered steady-state
+    cumulated_error += error;
+  }
+  else cumulated_error = 0;//reset integrator during transient response
+
+  pwm = Kp * error + Ki * cumulated_error;//PIcontrol feedback value
+  pwm = constrain(pwm, -255, 255);//constrained feedback value(-255,255)
+  return pwm;
+}
+
+void Motor_control(int pwm) {
+  if (pwm <= 0) {//set direction according to sign of 'pwm'
+    digitalWrite(DIRECTION1, LOW);
+    digitalWrite(DIRECTION2, HIGH);
+  } else {
+    digitalWrite(DIRECTION1, HIGH);
+    digitalWrite(DIRECTION2, LOW);
+  }
+  digitalWrite(PWM_pin,abs(PWM));//write absolute value of PWM into PWM pin
 }

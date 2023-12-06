@@ -19,8 +19,8 @@ void loop() {
   // put your main code here, to run repeatedly:
   timer = millis();
   mpu.Execute();//update MPU6050
-  float angle = mpu.GetAngZ ();
+  float speed = mpu.GetGyroZ ();
   if(timer>100){
-    BTSerial.println(angle);
+    BTSerial.println(speed);
   }
 }
