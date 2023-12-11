@@ -6,12 +6,12 @@
 
 MPU6050 mpu (Wire);//attach MPU6050 library to Wire.h
 
-#define MPU6050     0x68// MPU6050 address
-#define BT_RX       12//HM-10 TX pin num
-#define BT_TX       13//HM-10 RX pin num
-#define IN3 //Motor Rotation Direction
-#define IN4 //Motor Rotation Direction
-#define PWM_Pin 9 //Motor PWM pin
+#define MPU6050     0x68 // MPU6050 address
+#define BT_RX       12 //HM-10 TX pin num
+#define BT_TX       13 //HM-10 RX pin num
+#define IN3         6 //Motor Rotation Direction
+#define IN4         7 //Motor Rotation Direction
+#define PWM_Pin     9 //Motor PWM pin
 #define CDS1
 #define CDS2
 //include more pin numbers
