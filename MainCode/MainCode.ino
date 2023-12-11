@@ -7,11 +7,11 @@
 MPU6050 mpu (Wire);//attach MPU6050 library to Wire.h
 
 #define MPU6050     0x68// MPU6050 address
-#define BT_RX       8//HM-10 TX pin num
-#define BT_TX       9//HM-10 RX pin num
-#define DIRECTION1//Motor Rotation Direction
-#define DIRECTION2//Motor Rotation Direction
-#define PWM_Pin//Motor PWM pin
+#define BT_RX       12//HM-10 TX pin num
+#define BT_TX       13//HM-10 RX pin num
+#define IN3 //Motor Rotation Direction
+#define IN4 //Motor Rotation Direction
+#define PWM_Pin 9 //Motor PWM pin
 #define CDS1
 #define CDS2
 //include more pin numbers
@@ -138,11 +138,11 @@ int PIcontrol(float setpoint, float currentvalue){
 
 void Motor_control(int pwm) {
   if (pwm <= 0) {//set direction according to sign of 'pwm'
-    digitalWrite(DIRECTION1, LOW);
-    digitalWrite(DIRECTION2, HIGH);
+    digitalWrite(IN3, LOW); //CW
+    digitalWrite(IN4, HIGH);
   } else {
-    digitalWrite(DIRECTION1, HIGH);
-    digitalWrite(DIRECTION2, LOW);
+    digitalWrite(IN3, HIGH); //CCW
+    digitalWrite(IN4, LOW);
   }
-  digitalWrite(PWM_pin,abs(PWM));//write absolute value of PWM into PWM pin
+  digitalWrite(PWM_pin,abs(pwm));//write absolute value of PWM into PWM pin
 }
