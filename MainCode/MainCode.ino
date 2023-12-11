@@ -40,21 +40,21 @@ void setup() {
   // put your setup code here, to run once:
   //set register
   //set pin mode
-
+  
   //initiating Bluetooth Comm
   BTSerial.begin(38400);//Bluetooth HM10 Baudrate: 38400
   //initializing MPU6050
   mpu.Initialize();
-  BTSerial.println("Sensor Calibration in Process: DO NOT MOVE")
+  BTSerial.println("Sensor Calibration in Process: DO NOT MOVE");
   mpu.Calibrate ();//calibrating MPU6050 for sensor offset value
-  BTSerial.println("Calibration COMPLETE: H_SAT Operational")
+  BTSerial.println("Calibration COMPLETE: H_SAT Operational");
 
   //initializing values
   set_angle=0;
   accelSpeed = 0;
   cumulated_error = 0;
   rpm = 0;//default set RPM =0
-  op_mode = 0;//defualt set op_mode: Stabilization
+  op_mode = 0;//default set op_mode: Stabilization
   T_interval = 0;
 }
 
@@ -85,36 +85,36 @@ void loop() {
   }
 
   if(op_mode == 0){//for stabilization mode
-    Stabilization();
+    stabilization();
   }
   else if(op_mode == 1){
     orientation();
   }
   else if(op_mode == 2){
     while(){
-    
+      SolarTrack();
     }
   }
 }
 
-void Stabilization(){//stabilization mode function
+void stabilization(){//stabilization mode function
   set_speed = 0;
-  Update_MPU();
+  mpu.Execute();
   float speed = getGyroZ();
   Motor_control(PIcontrol(set_speed, speed));
 }
 
 void orientation(){//constant RPM mode function
-  Update_MPU();
+  mpu.Execute();
   float angle = getAngZ();
   Motor_control(PIcontrol(set_angle, angle));
 }
 
 void SolarTrack(){//solar tracking mode function
-  Update_MPU();
+  mpu.Execute();
 }
 
-void Update_MPU(){//function to update speed and angle from MPU6050
+void mpu.Execute(){//function to update speed and angle from MPU6050
   mpu.Execute();
 }
 
