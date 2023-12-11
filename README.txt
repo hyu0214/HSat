@@ -1,3 +1,3 @@
 Microprocessor
 CanSat with reaction wheel project
-![image](./CAD/image.png)
+![image](./HSat/CAD/image.png)
