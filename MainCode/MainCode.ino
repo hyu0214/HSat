@@ -180,5 +180,22 @@ int measure_CDS(){//function to measure CDS_value
   //measure average of two bottom mounted CDS sensor
   //in the future, should come up with an algorithm to preclude when top mounted CDS sensor measures over certain value
   //(=interference detected)
-  
+    for (int i =0; i < numPins; i++){
+    ADMUX = (ADMUX & 0xF0) | (analogPins[i] & 0x0F);
+    ADCSRA |= (1 << ADSC);
+    while (ADCSRA & (1 << ADSC));
+    uint16_t value = ADC;
+
+    uint16_t Pin0, Pin1;
+    if (i == 0) {              //i=0, i=1일때의 각각 다른 값을 부여
+      Pin0 = value;
+    }else if (i == 1){
+      Pin1 = value;
+      } 
+    if (Pin0 != 0 && Pin1 != 0){
+    return (Pin0 + Pin1) / 2;
+    }  
+  } 
+  Pin0=0; //Pin의 값을 최고화
+  Pin1=0;  
 }
