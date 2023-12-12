@@ -25,10 +25,10 @@ float set_angle;
 float cumulated_error;
 const float err_ref = 5;//reference value for deciding steady-state
 int pwm;
-const float Kp;//P controller Gain
-const float Ki;//I controller Gain
+const float Kp = 5.1;//P controller Gain
+const float Ki = 0.01;//I controller Gain
 const float alpha;//complementary filter gain
-const float error_ref;//integrator shut off reference value
+const float error_ref = 0.5;//integrator shut off reference value
 int settling_counter;//counter for selective PI control system
 const int analogPins[] = {0, 1};                                       //아날로그 핀들을 정의
 const int numPins = sizeof(analogPins) / sizeof(analogPins[0]);        //아날로그 핀들의 개수 정의
@@ -142,7 +142,7 @@ int PIcontrol(float setpoint, float currentvalue){
   if(abs(error)<err_ref) counter ++;
   else counter = 0;
 
-  if(counter>5){//start Integrator if entered steady-state
+  if(counter>8){//start Integrator if entered steady-state
     cumulated_error += error;
   }
   else cumulated_error = 0;//reset integrator during transient response
