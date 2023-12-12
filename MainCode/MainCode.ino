@@ -1,7 +1,8 @@
+#include <SoftwareSerial.h>
+
 #include <Wire.h>
 //A4, A5 pin designated for MPU6050 I2C connection
 //pin config: Vcc-3.3V SCL-A5 SDA-A4
-#include <SoftwareSerial.h>
 #include <TinyMPU6050.h>
 
 MPU6050 mpu (Wire);//attach MPU6050 library to Wire.h
@@ -11,7 +12,7 @@ MPU6050 mpu (Wire);//attach MPU6050 library to Wire.h
 #define BT_TX       13 //HM-10 RX pin num
 #define IN3         6 //Motor Rotation Direction
 #define IN4         7 //Motor Rotation Direction
-#define PWM_Pin     9 //Motor PWM pin
+#define PWM_pin     9 //Motor PWM pin
 #define CDS1
 #define CDS2
 //include more pin numbers
@@ -25,14 +26,15 @@ float set_angle;
 float cumulated_error;
 const float err_ref = 5;//reference value for deciding steady-state
 int pwm;
-const float Kp = 5.1;//P controller Gain
-const float Ki = 0.01;//I controller Gain
+//unsigned long now;
+const float Kp = 0.01;//P controller Gain
+const float Ki = 0.0;//I controller Gain
 const float alpha;//complementary filter gain
 const float error_ref = 0.5;//integrator shut off reference value
-int settling_counter;//counter for selective PI control system
+int counter;//counter for selective PI control system
 const int analogPins[] = {0, 1};                                       //아날로그 핀들을 정의
 const int numPins = sizeof(analogPins) / sizeof(analogPins[0]);        //아날로그 핀들의 개수 정의
-bool orientation_flag//bool flag for whether system is oriented to set_angle
+bool orientation_flag;//bool flag for whether system is oriented to set_angle
 
 SoftwareSerial BTSerial(BT_RX, BT_TX);//BTSerial: HM10 comm
 
@@ -54,7 +56,7 @@ void setup() {
   //initializing variables
   set_angle=0;
   cumulated_error = 0;
-  rpm = 0;//default set RPM =0
+  set_speed = 0;//default set RPM =0
   op_mode = 0;//default set op_mode: Stabilization
 }
 
@@ -135,7 +137,7 @@ void SolarTrack(){//solar tracking mode function
 }
 
 int PIcontrol(float setpoint, float currentvalue){
-  now = micros();
+  //now = micros();
   float error = setpoint - currentvalue;
   //float r_speed = abs(mpu.GetAngGyroZ())*3.14159/180;
 
@@ -154,8 +156,8 @@ int PIcontrol(float setpoint, float currentvalue){
 
 void Update_MPU(){//fetch speed & angle from MPU6050
   mpu.Execute();
-  speed = getGyroZ();//speed in deg/sec
-  angle = getAngZ();//angle in deg
+  speed = mpu.GetGyroZ();//speed in deg/sec
+  angle = mpu.GetAngZ();//angle in deg
 }
 
 void Motor_control(int pwm) {
@@ -180,22 +182,18 @@ int measure_CDS(){//function to measure CDS_value
   //measure average of two bottom mounted CDS sensor
   //in the future, should come up with an algorithm to preclude when top mounted CDS sensor measures over certain value
   //(=interference detected)
+  uint16_t Pin0, Pin1;
     for (int i =0; i < numPins; i++){
     ADMUX = (ADMUX & 0xF0) | (analogPins[i] & 0x0F);
     ADCSRA |= (1 << ADSC);
     while (ADCSRA & (1 << ADSC));
     uint16_t value = ADC;
-
-    uint16_t Pin0, Pin1;
     if (i == 0) {              //i=0, i=1일때의 각각 다른 값을 부여
       Pin0 = value;
-    }else if (i == 1){
+    }
+    else if (i == 1){
       Pin1 = value;
       } 
-    if (Pin0 != 0 && Pin1 != 0){
-    return (Pin0 + Pin1) / 2;
     }  
-  } 
-  Pin0=0; //Pin의 값을 최고화
-  Pin1=0;  
+  return (Pin0 + Pin1) / 2;
 }
