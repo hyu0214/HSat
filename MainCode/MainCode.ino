@@ -34,6 +34,8 @@ const float error_ref = 0.5;//integrator shut off reference value
 int counter;//counter for selective PI control system
 const int analogPins[] = {0, 1};                                       //아날로그 핀들을 정의
 const int numPins = sizeof(analogPins) / sizeof(analogPins[0]);        //아날로그 핀들의 개수 정의
+uint16_t Pin0 = 0;   //0번 핀 값 정의
+uint16_t Pin1 = 0;   //1번 핀 값 정의
 bool orientation_flag;//bool flag for whether system is oriented to set_angle
 
 SoftwareSerial BTSerial(BT_RX, BT_TX);//BTSerial: HM10 comm
