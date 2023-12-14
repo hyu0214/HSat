@@ -19,15 +19,15 @@ MPU6050 mpu (Wire);//attach MPU6050 library to Wire.h
 const int16_t accelY_offset;
 const int16_t gyroZ_offset;
 unsigned int op_mode;
-float angle;
-float speed;
-float set_speed;
-float set_angle;
+volatile float angle;
+volatile float speed;
+volatile float set_speed;
+volatile float set_angle;
 float cumulated_error;
 const float err_ref = 5;//reference value for deciding steady-state
 int pwm;
 //unsigned long now;
-const float Kp = 0.01;//P controller Gain
+const float Kp = 0.002005;//P controller Gain
 const float Ki = 0.0;//I controller Gain
 const float alpha;//complementary filter gain
 const float error_ref = 0.5;//integrator shut off reference value
@@ -83,7 +83,7 @@ void loop() {
     }
     else if(abs(command)<180){
       op_mode = 1;
-      set_angle = constrain(command,-180.0,180.0);//get set angle
+      set_angle = command;//get set angle
       BTSerial.print("Rotating to orientation:");
       BTSerial.println(set_angle);
     }
@@ -152,7 +152,8 @@ int PIcontrol(float setpoint, float currentvalue){
   else cumulated_error = 0;//reset integrator during transient response
 
   pwm = Kp * error + Ki * cumulated_error;//PIcontrol feedback value
-  pwm = constrain(pwm, -255, 255);//constrained feedback value(-255,255)
+  pwm = constrain(pwm, -100, 100);//constrained feedback value(-255,255)
+
   return pwm;
 }
 
