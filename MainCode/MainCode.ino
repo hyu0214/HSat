@@ -176,13 +176,13 @@ void Update_MPU(){//fetch speed & angle from MPU6050
 /* disabled due to integration of PI control function and PWM
 void Motor_control(int pwm) {
   if (pwm <= 0) {//set direction according to sign of 'pwm'
-    digitalWrite(IN3, LOW); //CW rotation
-    digitalWrite(IN4, HIGH);
-  } else {
-    digitalWrite(IN3, HIGH); //CCW rotation
+    digitalWrite(IN3, HIGH); //CW rotation
     digitalWrite(IN4, LOW);
+  } else {
+    digitalWrite(IN3, LOW); //CCW rotation
+    digitalWrite(IN4, HIGH);
   }
-  digitalWrite(PWM_pin,abs(pwm));//write absolute value of PWM into PWM pin
+  analogWrite(PWM_pin,abs(pwm));//write absolute value of PWM into PWM pin
 }
 */
 void init_CDS_ADC(){                                     //각기 다른 조도센서와 연결된 아날로그 핀들의 공통설정
