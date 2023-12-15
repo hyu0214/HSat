@@ -28,14 +28,15 @@ const float err_ref = 0.25;//reference value for deciding steady-state
 const float Kp_v = 4.0;//P controller Gain for velocity
 const float Ki_v = 0.1;//I controller Gain for velocity
 const float Kp_a = 4.0;//P controller Gain for angle
-const float Ki_a = 0.1;//I controller Gain for angle
+const float Ki_a = 0.5;//I controller Gain for angle
 int counter;//counter for selective PI control system
 const int analogPins[] = {0, 1};                                       //define each analogue pin
 const int numPins = sizeof(analogPins) / sizeof(analogPins[0]);        //define size of analogue pin
 uint16_t Pin0 = 0;   //0번 핀 값 정의
 uint16_t Pin1 = 0;   //1번 핀 값 정의
 bool orientation_flag;//bool flag for whether system is oriented to set_angle
-bool control_mod;
+bool control_mod;//bool flag for whether system is in velocity control or angle control
+//true: velocity  false: angle
 
 SoftwareSerial BTSerial(BT_RX, BT_TX);//BTSerial: HM10 comm
 
@@ -51,7 +52,7 @@ void setup() {
   digitalWrite(IN3, HIGH);
   digitalWrite(IN4, HIGH);
   delay(3000);//wait until motor stops
-  //initiating Bluetooth Communication
+  //initiating Bluetooth Comm
   BTSerial.begin(38400);//Bluetooth HM10 Baudrate: 38400
   BTSerial.println("Sensor Calibration");
   BTSerial.println("DO NOT MOVE");
@@ -70,30 +71,35 @@ void setup() {
 void loop() {
   // put your main code here, to run repeatedly:
   int command;
-  if(BTSerial.available()){//get operation mode and set rpm from HM10
+  while(BTSerial.available()){//get operation mode and set rpm from HM10
     command = BTSerial.parseInt();
-    if(command == 20000){//mode0: stabilization
-      op_mode=0;
-      BTSerial.println("Stabilize");
-    }
-    else if(command == 25000){//mode1: moving to set_angle
-      op_mode=1;
-      orientation_flag = false;
-      BTSerial.print("Rotating to orientation:");
-      BTSerial.println(set_angle);
-    }
-    else if(command == 30000){//mode2: solar tracking
-      op_mode=2;
-      BTSerial.println("Tracking Sun");
-    }
-    else if(abs(command)<=180.0){
+  }
+  if(abs(command)<=180.0){
       op_mode = 1;
       set_angle = command;//get set angle
       BTSerial.print("Rotating to orientation:");
       BTSerial.println(set_angle);
     }
+  else if(command == 20000){//mode0: stabilization
+      op_mode=0;
+      BTSerial.println("Stabilize");
   }
-
+  else if(command == 25000){//mode1: moving to set_angle
+    op_mode=1;
+    orientation_flag = false;
+    BTSerial.print("Rotating to orientation:");
+    BTSerial.println(set_angle);
+  }
+  else if(command == 30000){//mode2: solar tracking
+    op_mode=2;
+    BTSerial.println("Tracking Sun");
+  }
+  else if(abs(command)<=180.0){
+      op_mode = 1;
+      set_angle = command;//get set angle
+      BTSerial.print("Rotating to orientation:");
+      BTSerial.println(set_angle);
+  }
   if(op_mode == 0){//for stabilization mode
     stabilization();
   }
@@ -104,7 +110,7 @@ void loop() {
       SolarTrack();
   }
 }
-//Non-linear PI control with Anti-windup method
+//PI control with Anti-windup method
 void PIcontrol(float setpoint, float currentvalue){
   float feedback;
   float error = setpoint - currentvalue;
@@ -128,7 +134,7 @@ void PIcontrol(float setpoint, float currentvalue){
   }
   //need function to compensate NLD
   int pwm = constrain(abs(feedback),0,255);
-  if(feedback>=0){
+  if(PI>=0){
     digitalWrite(IN3, LOW); //CW rotation
     digitalWrite(IN4, HIGH);
     analogWrite(PWM_pin,pwm);
@@ -138,11 +144,6 @@ void PIcontrol(float setpoint, float currentvalue){
     digitalWrite(IN4, LOW);
     analogWrite(PWM_pin,pwm);//write absolute value of PWM into PWM pin
   }
-  BTSerial.print(angle);
-  BTSerial.print(", ");
-  BTSerial.print(speed);
-  BTSerial.print(", ");
-  BTSerial.println(pwm);
 }
 
 void stabilization(){//stabilization mode function
