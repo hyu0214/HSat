@@ -26,16 +26,16 @@ volatile float set_angle;
 float cumulated_error;
 const float err_ref = 5;//reference value for deciding steady-state
 //unsigned long now;
-const float Kp = 0.002010;//P controller Gain
-const float Ki = 0.0;//I controller Gain
+const float Kp[1] = [4.0,1.0];//P controller Gain for velocity/angle
+const float Ki[1] = [0.5,1.0];//I controller Gain for velocity/angle
 const float alpha;//complementary filter gain
-const float error_ref = 5;//integrator shut off reference value
 int counter;//counter for selective PI control system
 const int analogPins[] = {0, 1};                                       //아날로그 핀들을 정의
 const int numPins = sizeof(analogPins) / sizeof(analogPins[0]);        //아날로그 핀들의 개수 정의
 uint16_t Pin0 = 0;   //0번 핀 값 정의
 uint16_t Pin1 = 0;   //1번 핀 값 정의
 bool orientation_flag;//bool flag for whether system is oriented to set_angle
+bool control_mod;
 
 SoftwareSerial BTSerial(BT_RX, BT_TX);//BTSerial: HM10 comm
 
@@ -94,6 +94,7 @@ void loop() {
   }
 
   if(op_mode == 0){//for stabilization mode
+    control_mod=TRUE;
     stabilization();
   }
   else if(op_mode == 1){
@@ -103,7 +104,7 @@ void loop() {
       SolarTrack();
   }
 }
-
+//Non-linear PI control with Anti-windup method
 void PIcontrol(float setpoint, float currentvalue){
   //now = micros();
   float error = setpoint - currentvalue;
@@ -113,6 +114,7 @@ void PIcontrol(float setpoint, float currentvalue){
 
   if(counter>8){//start Integrator if entered steady-state
     cumulated_error += error;
+    cumulated_error = constrain(cumulated_error,-500,500)//constrain cumulated error for anti-windup
   }
   else cumulated_error = 0;//reset integrator during transient response
   float PI = Kp * error + Ki * cumulated_error;//PIcontrol feedback value
