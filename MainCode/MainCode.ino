@@ -133,7 +133,7 @@ void PIcontrol(float setpoint, float currentvalue){
   }
   //need function to compensate NLD
   int pwm = constrain(abs(feedback),0,255);
-  if(PI>=0){
+  if(feedback>=0){
     digitalWrite(IN3, LOW); //CW rotation
     digitalWrite(IN4, HIGH);
     analogWrite(PWM_pin,pwm);
