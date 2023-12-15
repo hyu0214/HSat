@@ -121,12 +121,12 @@ void PIcontrol(float setpoint, float currentvalue){
   if(PI>=0){
     digitalWrite(IN3, LOW); //CW rotation
     digitalWrite(IN4, HIGH);
-    digitalWrite(PWM_pin,pwm);
+    analogWrite(PWM_pin,pwm);
   }
   else{
     digitalWrite(IN3, HIGH); //CCW rotation
     digitalWrite(IN4, LOW);
-    digitalWrite(PWM_pin,pwm);//write absolute value of PWM into PWM pin
+    analogWrite(PWM_pin,pwm);//write absolute value of PWM into PWM pin
   }
 }
 
