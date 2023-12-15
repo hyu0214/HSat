@@ -51,7 +51,7 @@ void setup() {
   digitalWrite(IN3, HIGH);
   digitalWrite(IN4, HIGH);
   delay(3000);//wait until motor stops
-  //initiating Bluetooth Comm
+  //initiating Bluetooth Communication
   BTSerial.begin(38400);//Bluetooth HM10 Baudrate: 38400
   BTSerial.println("Sensor Calibration");
   BTSerial.println("DO NOT MOVE");
@@ -117,7 +117,7 @@ void PIcontrol(float setpoint, float currentvalue){
     cumulated_error = constrain(cumulated_error,-800,800);//constrain cumulated error for anti-windup
   }
 
-  if((counter>40)&(error<0.3)) flag = true;//whether set value is achieved
+  if((counter>40)&(error<0.3)) orientation_flag = true;//whether set value is achieved
 
   else cumulated_error = 0;//reset integrator during transient response
   if(!control_mod){//velocity control mod
@@ -128,7 +128,7 @@ void PIcontrol(float setpoint, float currentvalue){
   }
   //need function to compensate NLD
   int pwm = constrain(abs(feedback),0,255);
-  if(PI>=0){
+  if(feedback>=0){
     digitalWrite(IN3, LOW); //CW rotation
     digitalWrite(IN4, HIGH);
     analogWrite(PWM_pin,pwm);
@@ -138,6 +138,11 @@ void PIcontrol(float setpoint, float currentvalue){
     digitalWrite(IN4, LOW);
     analogWrite(PWM_pin,pwm);//write absolute value of PWM into PWM pin
   }
+  BTSerial.print(angle);
+  BTSerial.print(", ");
+  BTSerial.print(speed);
+  BTSerial.print(", ");
+  BTSerial.println(pwm);
 }
 
 void stabilization(){//stabilization mode function
