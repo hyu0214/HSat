@@ -75,14 +75,14 @@ void loop() {
     command = BTSerial.parseInt();
   }
   if(abs(command)<=180.0){
-      op_mode = 1;
-      set_angle = command;//get set angle
-      BTSerial.print("Rotating to orientation:");
-      BTSerial.println(set_angle);
-    }
+    op_mode = 1;
+    set_angle = command;//get set angle
+    BTSerial.print("Rotating to orientation:");
+    BTSerial.println(set_angle);
+  }
   else if(command == 20000){//mode0: stabilization
-      op_mode=0;
-      BTSerial.println("Stabilize");
+    op_mode=0;
+    BTSerial.println("Stabilize");
   }
   else if(command == 25000){//mode1: moving to set_angle
     op_mode=1;
@@ -95,10 +95,10 @@ void loop() {
     BTSerial.println("Tracking Sun");
   }
   else if(abs(command)<=180.0){
-      op_mode = 1;
-      set_angle = command;//get set angle
-      BTSerial.print("Rotating to orientation:");
-      BTSerial.println(set_angle);
+    op_mode = 1;
+    set_angle = command;//get set angle
+    BTSerial.print("Rotating to orientation:");
+    BTSerial.println(set_angle);
   }
   if(op_mode == 0){//for stabilization mode
     stabilization();
@@ -107,7 +107,7 @@ void loop() {
     orientation();
   }
   else if(op_mode == 2){
-      SolarTrack();
+    SolarTrack();
   }
 }
 //PI control with Anti-windup method
@@ -120,17 +120,16 @@ void PIcontrol(float setpoint, float currentvalue){
 
   if(counter>20){//start Integrator if entered steady-state
     cumulated_error += error;
-    cumulated_error = constrain(cumulated_error,-800,800);//constrain cumulated error for anti-windup
   }
 
   if((counter>40)&(error<0.3)) orientation_flag = true;//whether set value is achieved
 
   else cumulated_error = 0;//reset integrator during transient response
   if(!control_mod){//velocity control mod
-    feedback = Kp_v * error + Ki_v * cumulated_error;//PIcontrol feedback value
+    feedback = Kp_v * error + constrain(Ki_v * cumulated_error,-60,60);//PIcontrol feedback value
   }
   else{
-    feedback = Kp_a * error + Ki_a * cumulated_error;//PIcontrol feedback value
+    feedback = Kp_a * error + constrain(Ki_a * cumulated_error,-60,60);//PIcontrol feedback value
   }
   //need function to compensate NLD
   int pwm = constrain(abs(feedback),0,255);
