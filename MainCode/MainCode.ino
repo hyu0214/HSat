@@ -42,21 +42,21 @@ SoftwareSerial BTSerial(BT_RX, BT_TX);//BTSerial: HM10 comm
 void setup() {
   // put your setup code here, to run once:
   //set register
-
+  
   //initializing MPU6050
   mpu.Initialize();
   //set pin mode
-
+  
   //set motor to brake(STOP)
   digitalWrite(IN3, HIGH);
   digitalWrite(IN4, HIGH);
   delay(3000);//wait until motor stops
   //initiating Bluetooth Comm
   BTSerial.begin(38400);//Bluetooth HM10 Baudrate: 38400
-  BTSerial.println("Sensor Calibration in Process: DO NOT MOVE");
-
+  BTSerial.println("Sensor Calibration");
+  BTSerial.println("DO NOT MOVE");
   mpu.Calibrate ();//calibrating MPU6050 for sensor offset value
-  BTSerial.println("Calibration COMPLETE: H-SAT Operational");
+  BTSerial.println("Operational");
   
   //initializing variables
   set_angle=0.0;
@@ -117,7 +117,7 @@ void PIcontrol(float setpoint, float currentvalue){
   else cumulated_error = 0;//reset integrator during transient response
   float PI = Kp * error + Ki * cumulated_error;//PIcontrol feedback value
   //need function to compensate NLD
-  int pwm = constrain(0.0053*PI*PI,0,127);
+  int pwm = constrain(0.0053*PI*PI,0,255);
   if(PI>=0){
     digitalWrite(IN3, LOW); //CW rotation
     digitalWrite(IN4, HIGH);
