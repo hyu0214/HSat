@@ -1,9 +1,8 @@
-#include <SoftwareSerial.h>
-
 #include <Wire.h>
 //A4, A5 pin designated for MPU6050 I2C connection
 //pin config: Vcc-3.3V SCL-A5 SDA-A4
 #include <TinyMPU6050.h>
+#include <SoftwareSerial.h>
 
 MPU6050 mpu (Wire);//attach MPU6050 library to Wire.h
 
@@ -26,12 +25,11 @@ volatile float set_angle;
 float cumulated_error;
 const float err_ref = 5;//reference value for deciding steady-state
 //unsigned long now;
-const float Kp[1] = [4.0,1.0];//P controller Gain for velocity/angle
-const float Ki[1] = [0.5,1.0];//I controller Gain for velocity/angle
-const float alpha;//complementary filter gain
+const float Kp = 4.0;//P controller Gain for velocity/angle
+const float Ki = 0.1;//I controller Gain for velocity/angle
 int counter;//counter for selective PI control system
-const int analogPins[] = {0, 1};                                       //아날로그 핀들을 정의
-const int numPins = sizeof(analogPins) / sizeof(analogPins[0]);        //아날로그 핀들의 개수 정의
+const int analogPins[] = {0, 1};                                       //define each analogue pin
+const int numPins = sizeof(analogPins) / sizeof(analogPins[0]);        //define size of analogue pin
 uint16_t Pin0 = 0;   //0번 핀 값 정의
 uint16_t Pin1 = 0;   //1번 핀 값 정의
 bool orientation_flag;//bool flag for whether system is oriented to set_angle
@@ -94,7 +92,6 @@ void loop() {
   }
 
   if(op_mode == 0){//for stabilization mode
-    control_mod=TRUE;
     stabilization();
   }
   else if(op_mode == 1){
@@ -114,12 +111,12 @@ void PIcontrol(float setpoint, float currentvalue){
 
   if(counter>8){//start Integrator if entered steady-state
     cumulated_error += error;
-    cumulated_error = constrain(cumulated_error,-500,500)//constrain cumulated error for anti-windup
+    cumulated_error = constrain(cumulated_error,-500,500);//constrain cumulated error for anti-windup
   }
   else cumulated_error = 0;//reset integrator during transient response
-  float PI = Kp * error + Ki * cumulated_error;//PIcontrol feedback value
-  //need function to compensate NLD
-  int pwm = constrain(0.0053*PI*PI,0,255);
+  float feedback = Kp * error + Ki * cumulated_error;//PIcontrol feedback value
+  //calculate pwm to compensate for Non-Linear characteristic of DC Motor
+  int pwm = constrain(0.0053*feedback*feedback,0,255);
   if(PI>=0){
     digitalWrite(IN3, LOW); //CW rotation
     digitalWrite(IN4, HIGH);
@@ -175,22 +172,11 @@ void Update_MPU(){//fetch speed & angle from MPU6050
   speed = mpu.GetGyroZ();//speed in deg/sec
   angle = mpu.GetAngZ();//angle in deg
 }
-/* disabled due to integration of PI control function and PWM
-void Motor_control(int pwm) {
-  if (pwm <= 0) {//set direction according to sign of 'pwm'
-    digitalWrite(IN3, HIGH); //CW rotation
-    digitalWrite(IN4, LOW);
-  } else {
-    digitalWrite(IN3, LOW); //CCW rotation
-    digitalWrite(IN4, HIGH);
-  }
-  analogWrite(PWM_pin,abs(pwm));//write absolute value of PWM into PWM pin
-}
-*/
-void init_CDS_ADC(){                                     //각기 다른 조도센서와 연결된 아날로그 핀들의 공통설정
-  ADMUX |= (0<<REFS1) | (1<<REFS0);                      //참조 전압 5V로 설정
-  ADMUX |= (0<<ADLAR);                                   //왼쪽 정렬
-  ADCSRA |= (1<<ADEN);                                   //ADC 시작
+
+void init_CDS_ADC(){                                     //initiation for CDS ADC
+  ADMUX |= (0<<REFS1) | (1<<REFS0);
+  ADMUX |= (0<<ADLAR);                                   //8bit resolution
+  ADCSRA |= (1<<ADEN);                                   //enable ADC
   ADCSRA |= (1<<ADPS2) | (1<<ADPS1) | (1<<ADPS0);        //Prescaler=128
 }
 
@@ -204,7 +190,7 @@ int measure_CDS(){//function to measure CDS_value
     ADCSRA |= (1 << ADSC);
     while (ADCSRA & (1 << ADSC));
     uint16_t value = ADC;
-    if (i == 0) {              //i=0, i=1일때의 각각 다른 값을 부여
+    if (i == 0) {
       Pin0 = value;
     }
     else if (i == 1){
