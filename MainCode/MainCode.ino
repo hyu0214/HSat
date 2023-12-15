@@ -23,10 +23,12 @@ volatile float speed;
 volatile float set_speed;
 volatile float set_angle;
 float cumulated_error;
-const float err_ref = 5;//reference value for deciding steady-state
+const float err_ref = 0.25;//reference value for deciding steady-state
 //unsigned long now;
-const float Kp = 4.0;//P controller Gain for velocity/angle
-const float Ki = 0.1;//I controller Gain for velocity/angle
+const float Kp_v = 4.0;//P controller Gain for velocity
+const float Ki_v = 0.1;//I controller Gain for velocity
+const float Kp_a = 4.0;//P controller Gain for angle
+const float Ki_a = 0.1;//I controller Gain for angle
 int counter;//counter for selective PI control system
 const int analogPins[] = {0, 1};                                       //define each analogue pin
 const int numPins = sizeof(analogPins) / sizeof(analogPins[0]);        //define size of analogue pin
@@ -62,6 +64,7 @@ void setup() {
   cumulated_error = 0.0;
   op_mode = 0;//default set op_mode: Stabilization
   orientation_flag = false;
+  counter = 0;
 }
 
 void loop() {
@@ -103,20 +106,28 @@ void loop() {
 }
 //Non-linear PI control with Anti-windup method
 void PIcontrol(float setpoint, float currentvalue){
-  //now = micros();
+  float feedback;
   float error = setpoint - currentvalue;
   //float r_speed = abs(mpu.GetAngGyroZ())*3.14159/180;
   if(abs(error)<err_ref) counter ++;
-  else counter = 0;
+  else counter = 0;//reset counter during transiet response
 
-  if(counter>8){//start Integrator if entered steady-state
+  if(counter>20){//start Integrator if entered steady-state
     cumulated_error += error;
-    cumulated_error = constrain(cumulated_error,-500,500);//constrain cumulated error for anti-windup
+    cumulated_error = constrain(cumulated_error,-800,800);//constrain cumulated error for anti-windup
   }
+
+  if((counter>40)&(error<0.3)) flag = true;//whether set value is achieved
+
   else cumulated_error = 0;//reset integrator during transient response
-  float feedback = Kp * error + Ki * cumulated_error;//PIcontrol feedback value
-  //calculate pwm to compensate for Non-Linear characteristic of DC Motor
-  int pwm = constrain(0.0053*feedback*feedback,0,255);
+  if(!control_mod){//velocity control mod
+    feedback = Kp_v * error + Ki_v * cumulated_error;//PIcontrol feedback value
+  }
+  else{
+    feedback = Kp_a * error + Ki_a * cumulated_error;//PIcontrol feedback value
+  }
+  //need function to compensate NLD
+  int pwm = constrain(abs(feedback),0,255);
   if(PI>=0){
     digitalWrite(IN3, LOW); //CW rotation
     digitalWrite(IN4, HIGH);
@@ -132,12 +143,14 @@ void PIcontrol(float setpoint, float currentvalue){
 void stabilization(){//stabilization mode function
   set_speed = 0;
   Update_MPU();
+  control_mod = false;
   PIcontrol(set_speed, speed);
 }
 
 void orientation(){//constant RPM mode function
   //should update to set orientation_flag if orientation is complete
   Update_MPU();
+  control_mod = true;
   PIcontrol(set_angle, angle);
 }
 
