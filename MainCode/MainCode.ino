@@ -24,13 +24,12 @@ volatile float speed;
 volatile float set_speed;
 volatile float set_angle;
 float cumulated_error;
-const float err_ref = 5;//reference value for deciding steady-state
+const float err_ref = 1.0;//reference value for deciding steady-state
 int pwm;
 //unsigned long now;
-const float Kp = 0.002005;//P controller Gain
-const float Ki = 0.0;//I controller Gain
+const float Kp = 4.0;//P controller Gain
+const float Ki = 0.1;//I controller Gain
 const float alpha;//complementary filter gain
-const float error_ref = 0.5;//integrator shut off reference value
 int counter;//counter for selective PI control system
 const int analogPins[] = {0, 1};                                       //아날로그 핀들을 정의
 const int numPins = sizeof(analogPins) / sizeof(analogPins[0]);        //아날로그 핀들의 개수 정의
@@ -98,6 +97,10 @@ void loop() {
   else if(op_mode == 2){
       SolarTrack();
   }
+  BTSerial.print(speed);
+  BTSerial.print("\t");
+  BTSerial.println(pwm);
+  //BTSerial.println(pwm);
 }
 
 void stabilization(){//stabilization mode function
@@ -152,7 +155,7 @@ int PIcontrol(float setpoint, float currentvalue){
   else cumulated_error = 0;//reset integrator during transient response
 
   pwm = Kp * error + Ki * cumulated_error;//PIcontrol feedback value
-  pwm = constrain(pwm, -100, 100);//constrained feedback value(-255,255)
+  pwm = constrain(pwm, -255, 255);//constrained feedback value(-255,255)
 
   return pwm;
 }
@@ -165,13 +168,13 @@ void Update_MPU(){//fetch speed & angle from MPU6050
 
 void Motor_control(int pwm) {
   if (pwm <= 0) {//set direction according to sign of 'pwm'
-    digitalWrite(IN3, LOW); //CW rotation
-    digitalWrite(IN4, HIGH);
-  } else {
     digitalWrite(IN3, HIGH); //CCW rotation
     digitalWrite(IN4, LOW);
+  } else {
+    digitalWrite(IN3, LOW); //CW rotation
+    digitalWrite(IN4, HIGH);
   }
-  digitalWrite(PWM_pin,abs(pwm));//write absolute value of PWM into PWM pin
+  analogWrite(PWM_pin,abs(pwm));//write absolute value of PWM into PWM pin
 }
 
 void init_CDS_ADC(){                                     //각기 다른 조도센서와 연결된 아날로그 핀들의 공통설정
