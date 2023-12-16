@@ -12,8 +12,8 @@ MPU6050 mpu (Wire);//attach MPU6050 library to Wire.h
 #define IN3         6 //Motor Rotation Direction
 #define IN4         7 //Motor Rotation Direction
 #define PWM_pin     9 //Motor PWM pin
-#define CDS1
-#define CDS2
+#define CDS1        A0 //Analog Pin0
+#define CDS2        A1 //Analog Pin1
 //include more pin numbers
 const int16_t accelY_offset;
 const int16_t gyroZ_offset;
@@ -26,14 +26,13 @@ float cumulated_error;
 const float err_ref = 0.25;//reference value for deciding steady-state
 //unsigned long now;
 const float Kp_v = 8.0;//P controller Gain for velocity
-const float Ki_v = 0.5;//I controller Gain for velocity
-const float Kp_a = 12.0;//P controller Gain for angle
-const float Ki_a = 5.0;//I controller Gain for angle
+const float Ki_v = 3.0;//I controller Gain for velocity
+const float Kp_a = 13.0;//P controller Gain for angle
+const float Ki_a = 15.8;//I controller Gain for angle
 int counter;//counter for selective PI control system
 const int analogPins[] = {0, 1};                                       //define each analogue pin
 const int numPins = sizeof(analogPins) / sizeof(analogPins[0]);        //define size of analogue pin
-uint16_t Pin0 = 0;   //0번 핀 값 정의
-uint16_t Pin1 = 0;   //1번 핀 값 정의
+
 bool orientation_flag;//bool flag for whether system is oriented to set_angle
 bool control_mod;//bool flag for whether system is in velocity control or angle control
 //true: velocity  false: angle
@@ -137,10 +136,10 @@ void PIcontrol(float setpoint, float currentvalue){
 
   else cumulated_error = 0;//reset integrator during transient response
   if(!control_mod){//velocity control mod
-    feedback = Kp_v * error + constrain(Ki_v * cumulated_error,-60,60);//PIcontrol feedback value constrained
+    feedback = Kp_v * error + constrain(Ki_v * cumulated_error,-80,80);//PIcontrol feedback value constrained
   }
   else{
-    feedback = Kp_a * error + constrain(Ki_a * cumulated_error,-60,60);//PIcontrol feedback value
+    feedback = Kp_a * error + constrain(Ki_a * cumulated_error,-80,80);//PIcontrol feedback value
   }
   //need function to compensate NLD
   int pwm = constrain(abs(feedback),0,255);
@@ -218,18 +217,18 @@ int measure_CDS(){//function to measure CDS_value
   //measure average of two bottom mounted CDS sensor
   //in the future, should come up with an algorithm to preclude when top mounted CDS sensor measures over certain value
   //(=interference detected)
-  uint16_t Pin0, Pin1;
+  uint16_t APin0, APin1;
     for (int i =0; i < numPins; i++){
     ADMUX = (ADMUX & 0xF0) | (analogPins[i] & 0x0F);
     ADCSRA |= (1 << ADSC);
     while (ADCSRA & (1 << ADSC));
     uint16_t value = ADC;
     if (i == 0) {
-      Pin0 = value;
+      APin0 = value;
     }
     else if (i == 1){
-      Pin1 = value;
+      APin1 = value;
       } 
     }  
-  return (Pin0 + Pin1) / 2;
+  return (APin0 + APin1) / 2;
 }
