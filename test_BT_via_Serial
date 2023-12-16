@@ -1,0 +1,19 @@
+bool flag = false;
+int cmd = 0; // Initialize cmd to a default value
+
+void setup() {
+  Serial.begin(38400);
+}
+
+void loop() {
+  if (Serial.available()) {
+    String data = Serial.readStringUntil('\n');
+    cmd = data.toInt();
+    flag = true;
+  }
+
+  if (flag) {
+    Serial.println(cmd);
+    flag = false; // Reset flag after printing
+  }
+}
