@@ -25,10 +25,10 @@ volatile float set_angle;
 float cumulated_error;
 const float err_ref = 0.25;//reference value for deciding steady-state
 //unsigned long now;
-const float Kp_v = 4.0;//P controller Gain for velocity
-const float Ki_v = 0.1;//I controller Gain for velocity
-const float Kp_a = 4.0;//P controller Gain for angle
-const float Ki_a = 0.5;//I controller Gain for angle
+const float Kp_v = 8.0;//P controller Gain for velocity
+const float Ki_v = 0.5;//I controller Gain for velocity
+const float Kp_a = 12.0;//P controller Gain for angle
+const float Ki_a = 5.0;//I controller Gain for angle
 int counter;//counter for selective PI control system
 const int analogPins[] = {0, 1};                                       //define each analogue pin
 const int numPins = sizeof(analogPins) / sizeof(analogPins[0]);        //define size of analogue pin
@@ -154,6 +154,11 @@ void PIcontrol(float setpoint, float currentvalue){
     digitalWrite(IN4, LOW);
     analogWrite(PWM_pin,pwm);//write absolute value of PWM into PWM pin
   }
+  BTSerial.print(angle);
+  BTSerial.print(", ");
+  BTSerial.print(speed);
+  BTSerial.print(", ");
+  BTSerial.println(pwm);
 }
 
 void stabilization(){//stabilization mode function
