@@ -70,37 +70,48 @@ void setup() {
 
 void loop() {
   // put your main code here, to run repeatedly:
+  bool comm_flag = false;//bool flag for whether
   int command;
-  while(BTSerial.available()){//get operation mode and set rpm from HM10
-    command = BTSerial.parseInt();
+  if(BTSerial.available()){//get operation mode and set rpm from HM10
+    String data = BTSerial.readStringUntil('\n');
+    command = data.toInt();
+    comm_flag = true;
   }
-  if(abs(command)<=180.0){
-    op_mode = 1;
-    set_angle = command;//get set angle
-    BTSerial.print("Rotating to orientation:");
-    BTSerial.println(set_angle);
+  if(comm_flag){//set operation mode according to command
+      if(abs(command)<=180.0){
+        op_mode = 1;
+        set_angle = command;//get set angle
+        BTSerial.print("Rotating to orientation:");
+        BTSerial.println(set_angle);
+      }
+    else if(command == 20000){//mode0: stabilization
+      op_mode=0;
+      BTSerial.print("Stabilize");
+      comm_flag = false;
+    }
+    else if(command == 25000){//mode1: moving to previous set_angle
+      op_mode=1;
+      orientation_flag = false;
+      BTSerial.print("Rotating to orientation:");
+      BTSerial.println(set_angle);
+    }
+    else if(command == 30000){//mode2: solar tracking
+      op_mode=2;
+      BTSerial.println("Tracking Sun");
+    }
+    else if(abs(command)<=180.0){//mode1: moving to set_angle
+      op_mode = 1;
+      set_angle = command;//get set angle
+      BTSerial.print("Rotating to orientation:");
+      BTSerial.println(set_angle);
+    }
+    else BTSerial.print("COMM FAIL");
+
+    comm_flag = false;
   }
-  else if(command == 20000){//mode0: stabilization
-    op_mode=0;
-    BTSerial.println("Stabilize");
-  }
-  else if(command == 25000){//mode1: moving to set_angle
-    op_mode=1;
-    orientation_flag = false;
-    BTSerial.print("Rotating to orientation:");
-    BTSerial.println(set_angle);
-  }
-  else if(command == 30000){//mode2: solar tracking
-    op_mode=2;
-    BTSerial.println("Tracking Sun");
-  }
-  else if(abs(command)<=180.0){
-    op_mode = 1;
-    set_angle = command;//get set angle
-    BTSerial.print("Rotating to orientation:");
-    BTSerial.println(set_angle);
-  }
-  if(op_mode == 0){//for stabilization mode
+
+  //execute command for each mode
+  if(op_mode == 0){
     stabilization();
   }
   else if(op_mode == 1){
@@ -126,7 +137,7 @@ void PIcontrol(float setpoint, float currentvalue){
 
   else cumulated_error = 0;//reset integrator during transient response
   if(!control_mod){//velocity control mod
-    feedback = Kp_v * error + constrain(Ki_v * cumulated_error,-60,60);//PIcontrol feedback value
+    feedback = Kp_v * error + constrain(Ki_v * cumulated_error,-60,60);//PIcontrol feedback value constrained
   }
   else{
     feedback = Kp_a * error + constrain(Ki_a * cumulated_error,-60,60);//PIcontrol feedback value
@@ -143,11 +154,6 @@ void PIcontrol(float setpoint, float currentvalue){
     digitalWrite(IN4, LOW);
     analogWrite(PWM_pin,pwm);//write absolute value of PWM into PWM pin
   }
-  BTSerial.print(angle);
-  BTSerial.print(", ");
-  BTSerial.print(speed);
-  BTSerial.print(", ");
-  BTSerial.println(pwm);
 }
 
 void stabilization(){//stabilization mode function
