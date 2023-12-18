@@ -126,12 +126,13 @@ void loop() {
 void PIcontrol(float setpoint, float currentvalue){
   float feedback;
   float error = setpoint - currentvalue;
+  int pwm;
   //float r_speed = abs(mpu.GetAngGyroZ())*3.14159/180;
   if(abs(error)<err_ref) counter ++;
   else counter = 0;//reset counter during transiet response
 
   if(counter>20){//start Integrator if entered steady-state
-    cumulated_error += (error)*(time_interval);
+    cumulated_error += (error)*(elapsed_time);
     if((counter>40)&(error<0.3)) orientation_flag = true;//set falg if set_value is achieved
   }
   else cumulated_error = 0;//reset integrator during transient response
@@ -216,7 +217,7 @@ void Update_MPU(){//fetch speed & angle from MPU6050
   angle = mpu.GetAngZ();//angle in deg
   //calculate time interval between angle measurement
   now = millis();
-  time_interval = now - previous_time;
+  elapsed_time = now - previous_time;
   previous_time = now;
 }
 
