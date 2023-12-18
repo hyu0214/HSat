@@ -14,6 +14,7 @@ MPU6050 mpu (Wire);//attach MPU6050 library to Wire.h
 #define PWM_pin     9 //Motor PWM pin
 #define CDS1        A0 //Analog Pin0
 #define CDS2        A1 //Analog Pin1
+#define CDS3        A2 //Analog Pin2
 //include more pin numbers
 const int16_t accelY_offset;
 const int16_t gyroZ_offset;
@@ -30,7 +31,7 @@ const float Ki_v = 3.0;//I controller Gain for velocity
 const float Kp_a = 13.0;//P controller Gain for angle
 const float Ki_a = 15.8;//I controller Gain for angle
 int counter;//counter for selective PI control system
-const int analogPins[] = {0, 1};                                       //define each analogue pin
+const int analogPins[] = {0, 1, 2};                                    //define each analogue pin
 const int numPins = sizeof(analogPins) / sizeof(analogPins[0]);        //define size of analogue pin
 
 bool orientation_flag;//bool flag for whether system is oriented to set_angle
@@ -208,27 +209,37 @@ void Update_MPU(){//fetch speed & angle from MPU6050
 
 void init_CDS_ADC(){                                     //initiation for CDS ADC
   ADMUX |= (0<<REFS1) | (1<<REFS0);
-  ADMUX |= (0<<ADLAR);                                   //8bit resolution
+  ADMUX |= (1<<ADLAR);                                   //8bit resolution
   ADCSRA |= (1<<ADEN);                                   //enable ADC
-  ADCSRA |= (1<<ADPS2) | (1<<ADPS1) | (1<<ADPS0);        //Prescaler=128
+  ADCSRA |= (1<<ADPS2);                                  //Prescaler=16
 }
 
-int measure_CDS(){//function to measure CDS_value
-  //measure average of two bottom mounted CDS sensor
-  //in the future, should come up with an algorithm to preclude when top mounted CDS sensor measures over certain value
-  //(=interference detected)
-  uint16_t APin0, APin1;
-    for (int i =0; i < numPins; i++){
+int measure_CDS() {
+  // Measure average of two bottom mounted CDS sensors
+  // In the future, consider adding an algorithm to preclude interference when top mounted CDS sensor measures over a certain value
+  int CDS [1];
+  uint8_t APin0;
+  uint8_t APin1;
+  // Measure the bottom two pins and calculate the average
+  for (int i = 0; i < numPins - 1; i++) {
     ADMUX = (ADMUX & 0xF0) | (analogPins[i] & 0x0F);
     ADCSRA |= (1 << ADSC);
     while (ADCSRA & (1 << ADSC));
-    uint16_t value = ADC;
+    uint8_t value = ADCH;
+
     if (i == 0) {
       APin0 = value;
-    }
-    else if (i == 1){
+    } else if (i == 1) {
       APin1 = value;
-      } 
-    }  
-  return (APin0 + APin1) / 2;
+    }
+  }
+  CDS[0] = (APin0 + APin1) / 2;
+
+  // Measure the top pin
+  ADMUX = (ADMUX & 0xF0) | (analogPins[numPins - 1] & 0x0F);
+  ADCSRA |= (1 << ADSC);
+  while (ADCSRA & (1 << ADSC));
+  CDS[1] = ADCH;
+  
+  return CDS;
 }
