@@ -24,7 +24,9 @@ volatile float set_speed;
 volatile float set_angle;
 float cumulated_error;
 const float err_ref = 0.25;//reference value for deciding steady-state
-//unsigned long now;
+unsigned long now;
+unsigned long previous_time;
+unsigned int elapsed_time;
 const float Kp_v = 8.0;//P controller Gain for velocity
 const float Ki_v = 3.0;//I controller Gain for velocity
 const float Kp_a = 13.0;//P controller Gain for angle
@@ -45,8 +47,6 @@ void setup() {
   
   //initializing MPU6050
   mpu.Initialize();
-  //set pin mode
-  
   //set motor to brake(STOP)
   digitalWrite(IN3, HIGH);
   digitalWrite(IN4, HIGH);
@@ -65,12 +65,14 @@ void setup() {
   op_mode = 0;//default set op_mode: Stabilization
   orientation_flag = false;
   counter = 0;
+  previous_time = 0;
 }
 
 void loop() {
   // put your main code here, to run repeatedly:
   bool comm_flag = false;//bool flag for whether
   int command;
+  int pwm;
   if(BTSerial.available()){//get operation mode and set rpm from HM10
     String data = BTSerial.readStringUntil('\n');
     command = data.toInt();
@@ -129,20 +131,28 @@ void PIcontrol(float setpoint, float currentvalue){
   else counter = 0;//reset counter during transiet response
 
   if(counter>20){//start Integrator if entered steady-state
-    cumulated_error += error;
+    cumulated_error += (error)*(time_interval);
+    if((counter>40)&(error<0.3)) orientation_flag = true;//set falg if set_value is achieved
   }
-
-  if((counter>40)&(error<0.3)) orientation_flag = true;//whether set value is achieved
-
   else cumulated_error = 0;//reset integrator during transient response
+
+
   if(!control_mod){//velocity control mod
     feedback = Kp_v * error + constrain(Ki_v * cumulated_error,-80,80);//PIcontrol feedback value constrained
   }
   else{
     feedback = Kp_a * error + constrain(Ki_a * cumulated_error,-80,80);//PIcontrol feedback value
   }
-  //need function to compensate NLD
-  int pwm = constrain(abs(feedback),0,255);
+ 
+  if((feedback<8)&(feedback>-8)){
+    pwm = 0;
+  }
+  else if((feedback<50)&(feedback>-50)){
+    pwm = constrain(46.875+abs(feedback)*(0.125-0.01*abs(feedback)),0,255);//compensated PWM value due to Nonlinear Dynamics
+  }
+  else{
+    pwm = constrain(abs(feedback),0,255);
+  }
   if(feedback>=0){
     digitalWrite(IN3, LOW); //CW rotation
     digitalWrite(IN4, HIGH);
@@ -204,6 +214,10 @@ void Update_MPU(){//fetch speed & angle from MPU6050
   mpu.Execute();
   speed = mpu.GetGyroZ();//speed in deg/sec
   angle = mpu.GetAngZ();//angle in deg
+  //calculate time interval between angle measurement
+  now = millis();
+  time_interval = now - previous_time;
+  previous_time = now;
 }
 
 void init_CDS_ADC(){                                     //initiation for CDS ADC
