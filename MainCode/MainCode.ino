@@ -109,7 +109,7 @@ void loop() {
       BTSerial.print("Rotating to orientation:");
       BTSerial.println(set_angle);
     }
-    else BTSerial.print("COMM FAIL");
+    else BTSerial.println("COMM FAIL");
 
     comm_flag = false;
   }
@@ -142,13 +142,13 @@ void PIcontrol(float setpoint, float currentvalue){
 
 
   if(!control_mod){//velocity control mod
-    feedback = Kp_v * error + constrain(Ki_v * cumulated_error,-60,60);//PIcontrol feedback value constrained
+    feedback = Kp_v * error + constrain(Ki_v * cumulated_error,-120,120);//PIcontrol feedback value constrained
   }
   else{
-    feedback = Kp_a * error + constrain(Ki_a * cumulated_error,-60,60);//PIcontrol feedback value
+    feedback = Kp_a * error + constrain(Ki_a * cumulated_error,-120,120);//PIcontrol feedback value
   }
  
-  if((feedback<8)&(feedback>-8)){
+  if((feedback<3)&(feedback>-3)){
     pwm = 0;
   }
   else if((feedback<50)&(feedback>-50)){
