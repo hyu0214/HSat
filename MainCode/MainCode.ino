@@ -50,7 +50,7 @@ void setup() {
   //set motor to brake(STOP)
   digitalWrite(IN3, HIGH);
   digitalWrite(IN4, HIGH);
-  delay(3000);//wait until motor stops
+  delay(8000);//wait until motor stops
   //initiating Bluetooth Comm
   BTSerial.begin(38400);//Bluetooth HM10 Baudrate: 38400
   BTSerial.println("Sensor Calibration");
@@ -87,7 +87,7 @@ void loop() {
       }
     else if(command == 20000){//mode0: stabilization
       op_mode=0;
-      BTSerial.print("Stabilize");
+      BTSerial.println("Stabilize");
       comm_flag = false;
     }
     else if(command == 25000){//mode1: moving to previous set_angle
@@ -100,6 +100,8 @@ void loop() {
       op_mode=2;
       BTSerial.println("Tracking Sun");
     }
+    else if(command == 15000) BTSerial.println(angle);//return current angle
+
     else if(abs(command)<=180.0){//mode1: moving to set_angle
       op_mode = 1;
       set_angle = command;//get set angle
@@ -139,10 +141,10 @@ void PIcontrol(float setpoint, float currentvalue){
 
 
   if(!control_mod){//velocity control mod
-    feedback = Kp_v * error + constrain(Ki_v * cumulated_error,-80,80);//PIcontrol feedback value constrained
+    feedback = Kp_v * error + constrain(Ki_v * cumulated_error,-60,60);//PIcontrol feedback value constrained
   }
   else{
-    feedback = Kp_a * error + constrain(Ki_a * cumulated_error,-80,80);//PIcontrol feedback value
+    feedback = Kp_a * error + constrain(Ki_a * cumulated_error,-60,60);//PIcontrol feedback value
   }
  
   if((feedback<8)&(feedback>-8)){
@@ -164,11 +166,11 @@ void PIcontrol(float setpoint, float currentvalue){
     digitalWrite(IN4, LOW);
     analogWrite(PWM_pin,pwm);//write absolute value of PWM into PWM pin
   }
-  BTSerial.print(angle);
-  BTSerial.print(", ");
-  BTSerial.print(speed);
-  BTSerial.print(", ");
-  BTSerial.println(pwm);
+  //BTSerial.print(angle);
+  //BTSerial.print(", ");
+  //BTSerial.print(speed);
+  //BTSerial.print(", ");
+  //BTSerial.println(pwm);
 }
 
 void stabilization(){//stabilization mode function
@@ -193,9 +195,11 @@ void SolarTrack(){//solar tracking mode function
   float origin_angle = angle;
   float sun_orientation;//angle of maximum illuminance(=angle of sun)
   bool orientation_flag = false;//bool flag for whether system is oriented to the sun
-  set_speed = 10;
-  while(abs(angle-origin_angle)<0.5){//rotate 360 degree and find maximum illuminance angle
+  set_speed = 20;
+  unsigned long start_time = millis();
+  while((abs(angle-origin_angle)<0.5)&( (now-start_time) >1500)){//rotate 360 degree and find maximum illuminance angle
     Update_MPU();
+    control_mod = false;
     PIcontrol(set_speed, speed);
     illuminance = measure_CDS();
     if(illuminance>max_illuminance){
