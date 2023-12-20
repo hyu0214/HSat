@@ -14,6 +14,8 @@ MPU6050 mpu (Wire);//attach MPU6050 library to Wire.h
 #define PWM_pin     9 //Motor PWM pin
 #define CDS1        A0 //Analog Pin0
 #define CDS2        A1 //Analog Pin1
+#define CDS3        A2 //Analog Pin2
+
 //include more pin numbers
 const int16_t accelY_offset;
 const int16_t gyroZ_offset;
@@ -233,23 +235,27 @@ void Update_MPU(){//fetch speed & angle from MPU6050
   previous_time = now;
 }
 
-void init_CDS_ADC(){                                     //initiation for CDS ADC
+//Solar Track
+struct t_CDSvalue {
+    int sidelight;
+    int toplight;
+};
+
+void init_CDS_ADC(){
   ADMUX |= (0<<REFS1) | (1<<REFS0);
-  ADMUX |= (0<<ADLAR);                                   //8bit resolution
-  ADCSRA |= (1<<ADEN);                                   //enable ADC
-  ADCSRA |= (1<<ADPS2) | (1<<ADPS1) | (1<<ADPS0);        //Prescaler=128
+  ADMUX |= (1<<ADLAR); //We will use only upper 8bit
+  ADCSRA |= (1<<ADEN);
+  ADCSRA |= (1<<ADPS2);  //Set prescaler 16
 }
 
-int measure_CDS(){//function to measure CDS_value
-  //measure average of two bottom mounted CDS sensor
-  //in the future, should come up with an algorithm to preclude when top mounted CDS sensor measures over certain value
-  //(=interference detected)
-  uint16_t APin0, APin1;
-    for (int i =0; i < numPins; i++){
+t_CDSvalue measure_CDS(){
+  t_CDSvalue destination;
+  uint8_t APin0, APin1, APin2;
+    for (int i =0; i < numPins-1; i++){
     ADMUX = (ADMUX & 0xF0) | (analogPins[i] & 0x0F);
     ADCSRA |= (1 << ADSC);
     while (ADCSRA & (1 << ADSC));
-    uint16_t value = ADC;
+    uint8_t value = ADCH;
     if (i == 0) {
       APin0 = value;
     }
@@ -257,5 +263,13 @@ int measure_CDS(){//function to measure CDS_value
       APin1 = value;
       } 
     }  
-  return (APin0 + APin1) / 2;
+
+  ADMUX = (ADMUX & 0xF0) | (analogPins[numPins - 1] & 0x0F);
+  ADCSRA |= (1 << ADSC);
+  while (ADCSRA & (1 << ADSC));
+  APin2 = ADCH;
+
+  destination.sidelight = (APin0 + APin1) / 2;
+  destination.toplight = APin2;
+  return destination;
 }
