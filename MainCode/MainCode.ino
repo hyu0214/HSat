@@ -14,7 +14,6 @@ MPU6050 mpu (Wire);//attach MPU6050 library to Wire.h
 #define PWM_pin     9 //Motor PWM pin
 #define CDS1        A0 //Analog Pin0
 #define CDS2        A1 //Analog Pin1
-#define CDS3        A2 //Analog Pin2
 //include more pin numbers
 const int16_t accelY_offset;
 const int16_t gyroZ_offset;
@@ -24,16 +23,17 @@ volatile float speed;
 volatile float set_speed;
 volatile float set_angle;
 float cumulated_error;
-const float err_ref = 0.25;//reference value for deciding steady-state
+const float err_ref_v = 0.5;//reference value for deciding velocity steady-state
+const float err_ref_a = 6.0;//reference value for deciding angle steady-state
 unsigned long now;
 unsigned long previous_time;
 unsigned int elapsed_time;
 const float Kp_v = 8.0;//P controller Gain for velocity
 const float Ki_v = 3.0;//I controller Gain for velocity
-const float Kp_a = 13.0;//P controller Gain for angle
-const float Ki_a = 15.8;//I controller Gain for angle
+const float Kp_a = 8.0;//P controller Gain for angle
+const float Ki_a = 7.8;//I controller Gain for angle
 int counter;//counter for selective PI control system
-const int analogPins[] = {0, 1, 2};                                       //define each analogue pin
+const int analogPins[] = {0, 1};                                       //define each analogue pin
 const int numPins = sizeof(analogPins) / sizeof(analogPins[0]);        //define size of analogue pin
 
 bool orientation_flag;//bool flag for whether system is oriented to set_angle
@@ -51,7 +51,7 @@ void setup() {
   //set motor to brake(STOP)
   digitalWrite(IN3, HIGH);
   digitalWrite(IN4, HIGH);
-  delay(8000);//wait until motor stops
+  delay(4000);//wait until motor stops
   //initiating Bluetooth Comm
   BTSerial.begin(38400);//Bluetooth HM10 Baudrate: 38400
   BTSerial.println("Sensor Calibration");
@@ -109,7 +109,7 @@ void loop() {
       BTSerial.print("Rotating to orientation:");
       BTSerial.println(set_angle);
     }
-    else BTSerial.println("COMM FAIL");
+    else BTSerial.print("COMM FAIL");
 
     comm_flag = false;
   }
@@ -130,9 +130,15 @@ void PIcontrol(float setpoint, float currentvalue){
   float feedback;
   float error = setpoint - currentvalue;
   int pwm;
-  //float r_speed = abs(mpu.GetAngGyroZ())*3.14159/180;
-  if(abs(error)<err_ref) counter ++;
-  else counter = 0;//reset counter during transiet response
+
+  if(!control_mod){
+    if(abs(error)<err_ref_a) counter ++;
+    else counter = 0;//reset counter during transiet response
+  }
+  else{
+    if(abs(error)<err_ref_v) counter ++;
+    else counter = 0;//reset counter during transiet response
+  }
 
   if(counter>20){//start Integrator if entered steady-state
     cumulated_error += (error)*(elapsed_time);
@@ -142,13 +148,13 @@ void PIcontrol(float setpoint, float currentvalue){
 
 
   if(!control_mod){//velocity control mod
-    feedback = Kp_v * error + constrain(Ki_v * cumulated_error,-120,120);//PIcontrol feedback value constrained
+    feedback = Kp_v * error + constrain(Ki_v * cumulated_error,-60,60);//PIcontrol feedback value constrained
   }
   else{
-    feedback = Kp_a * error + constrain(Ki_a * cumulated_error,-120,120);//PIcontrol feedback value
+    feedback = Kp_a * error + constrain(Ki_a * cumulated_error,-60,60);//PIcontrol feedback value
   }
  
-  if((feedback<3)&(feedback>-3)){
+  if((feedback<8)&(feedback>-8)){
     pwm = 0;
   }
   else if((feedback<50)&(feedback>-50)){
@@ -196,9 +202,9 @@ void SolarTrack(){//solar tracking mode function
   float origin_angle = angle;
   float sun_orientation;//angle of maximum illuminance(=angle of sun)
   bool orientation_flag = false;//bool flag for whether system is oriented to the sun
-  set_speed = 20;
+  set_speed = 8;//rotational speed 8 rpm
   unsigned long start_time = millis();
-  while((abs(angle-origin_angle)<0.5)&( (now-start_time) >1500)){//rotate 360 degree and find maximum illuminance angle
+  while((abs(angle-origin_angle)<10)&( (now-start_time) >1500)){//rotate 360 degree and find maximum illuminance angle
     Update_MPU();
     control_mod = false;
     PIcontrol(set_speed, speed);
@@ -208,6 +214,7 @@ void SolarTrack(){//solar tracking mode function
       sun_orientation = angle;
     }
   }
+  
   set_angle=sun_orientation;
   orientation_flag = false;
   while(!(orientation_flag)){
@@ -228,21 +235,21 @@ void Update_MPU(){//fetch speed & angle from MPU6050
 
 void init_CDS_ADC(){                                     //initiation for CDS ADC
   ADMUX |= (0<<REFS1) | (1<<REFS0);
-  ADMUX |= (1<<ADLAR);                                   //8bit resolution
+  ADMUX |= (0<<ADLAR);                                   //8bit resolution
   ADCSRA |= (1<<ADEN);                                   //enable ADC
-  ADCSRA |= (1<<ADPS2);        //Prescaler=16
+  ADCSRA |= (1<<ADPS2) | (1<<ADPS1) | (1<<ADPS0);        //Prescaler=128
 }
 
 int measure_CDS(){//function to measure CDS_value
   //measure average of two bottom mounted CDS sensor
   //in the future, should come up with an algorithm to preclude when top mounted CDS sensor measures over certain value
   //(=interference detected)
-  uint8_t APin0, APin1;
+  uint16_t APin0, APin1;
     for (int i =0; i < numPins; i++){
     ADMUX = (ADMUX & 0xF0) | (analogPins[i] & 0x0F);
     ADCSRA |= (1 << ADSC);
     while (ADCSRA & (1 << ADSC));
-    uint8_t value = ADCH;
+    uint16_t value = ADC;
     if (i == 0) {
       APin0 = value;
     }
