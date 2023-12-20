@@ -175,11 +175,6 @@ void PIcontrol(float setpoint, float currentvalue){
     digitalWrite(IN4, LOW);
     analogWrite(PWM_pin,pwm);//write absolute value of PWM into PWM pin
   }
-  //BTSerial.print(angle);
-  //BTSerial.print(", ");
-  //BTSerial.print(speed);
-  //BTSerial.print(", ");
-  //BTSerial.println(pwm);
 }
 
 void stabilization(){//stabilization mode function
