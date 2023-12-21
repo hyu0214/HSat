@@ -25,17 +25,17 @@ volatile float speed;
 volatile float set_speed;
 volatile float set_angle;
 float cumulated_error;
-const float err_ref_v = 0.5;//reference value for deciding velocity steady-state
-const float err_ref_a = 10.0;//reference value for deciding angle steady-state
+const float err_ref_v = 1.0;//reference value for deciding velocity steady-state
+const float err_ref_a = 6.0;//reference value for deciding angle steady-state
 unsigned long now;
 unsigned long previous_time;
 unsigned int elapsed_time;
-const float Kp_v = 8.0;//P controller Gain for velocity
-const float Ki_v = 3.0;//I controller Gain for velocity
+const float Kp_v = 12.0;//P controller Gain for velocity
+const float Ki_v = 2.0;//I controller Gain for velocity
 const float Kp_a = 8.0;//P controller Gain for angle
-const float Ki_a = 5.0;//I controller Gain for angle
+const float Ki_a = 1.0;//I controller Gain for angle
 int counter;//counter for selective PI control system
-const int analogPins[] = {0, 1};                                       //define each analogue pin
+const int analogPins[] = {0, 1, 2};                                    //define each analogue pin
 const int numPins = sizeof(analogPins) / sizeof(analogPins[0]);        //define size of analogue pin
 
 bool orientation_flag;//bool flag for whether system is oriented to set_angle
@@ -231,7 +231,7 @@ void Update_MPU(){//fetch speed & angle from MPU6050
 }
 
 //Solar Track
-struct t_CDSvalue {
+struct CDSvalue {
     int sidelight;
     int toplight;
 };
@@ -243,8 +243,8 @@ void init_CDS_ADC(){
   ADCSRA |= (1<<ADPS2);  //Set prescaler 16
 }
 
-t_CDSvalue measure_CDS(){
-  t_CDSvalue destination;
+CDSvalue measure_CDS(){
+  CDSvalue destination;
   uint8_t APin0, APin1, APin2;
     for (int i =0; i < numPins-1; i++){
     ADMUX = (ADMUX & 0xF0) | (analogPins[i] & 0x0F);
